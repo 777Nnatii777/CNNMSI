@@ -18,8 +18,8 @@ plt.figure(figsize=(10, 10))
 for images, labels in train_ds.take(1): 
     for i in range(25):
         ax = plt.subplot(5, 5, i + 1)
-        plt.imshow(images[i].numpy().astype("uint8")) 
-        plt.title(train_ds.class_names[labels[i]])    
+        plt.imshow(images[i].numpy().astype("uint8"))  
+        plt.title(train_ds.class_names[labels[i]])   
         plt.axis("off")
 plt.tight_layout()
 plt.show()
@@ -40,13 +40,14 @@ for images, labels in test_ds.take(1):
 plt.tight_layout()
 plt.show()
 
+
 klasy_opis = {
     "A-1": "Niebezpieczny zakręt w prawo",
     "A-2": "Niebezpieczny zakręt w lewo",
     "A-3": "Dwa niebezpieczne zakręty – pierwszy w prawo",
     "A-4": "Dwa niebezpieczne zakręty – pierwszy w lewo",
-    "A-6a": "Skrzyżowanie z drogą podporządkowaną z prawej",
-    "A-6b": "Skrzyżowanie z drogą podporządkowaną z lewej",
+    "A-6a": "Skrzyżowanie z drogą podporządkowaną z obydwustron",
+    "A-6b": "Skrzyżowanie z drogą podporządkowaną z prawej",
     "A-6c": "Skrzyżowanie z drogą podporządkowaną po obu stronach",
     "A-6d": "Wlot drogi jednokierunkowej z prawej",
     "A-6e": "Wlot drogi jednokierunkowej z lewej",
@@ -143,18 +144,28 @@ normalization_layer = tf.keras.layers.Rescaling(1./255)
 train_ds = train_ds.map(lambda x, y: (normalization_layer(x), y))
 test_ds = test_ds.map(lambda x, y: (normalization_layer(x), y))
 
+
+
 model = tf.keras.Sequential([
-    tf.keras.layers.Conv2D(32, (3,3), activation='relu', input_shape=(32, 32, 3)),
-    tf.keras.layers.Conv2D(32, (3,3), activation='relu'),
-    tf.keras.layers.MaxPooling2D((2,2)),
-    tf.keras.layers.Conv2D(64, (3,3), activation='relu'),
+    tf.keras.layers.Conv2D(64, (3,3), activation='relu', input_shape=(32, 32, 3)),
     tf.keras.layers.Conv2D(64, (3,3), activation='relu'),
     tf.keras.layers.MaxPooling2D((2,2)),
+    tf.keras.layers.Dropout(0.25),
+
+    tf.keras.layers.Conv2D(128, (3,3), activation='relu'),
+    tf.keras.layers.Conv2D(128, (3,3), activation='relu'),
+    tf.keras.layers.MaxPooling2D((2,2)),
+    tf.keras.layers.Dropout(0.25),
+
     tf.keras.layers.Flatten(),
-    tf.keras.layers.Dense(64, activation='relu'),
+    tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.Dropout(0.5),
     tf.keras.layers.Dense(num_classes)
 ])
+
+
 model.summary()
+
 
 model.compile(
     optimizer='adam',
@@ -162,7 +173,8 @@ model.compile(
     metrics=['accuracy']
 )
 
-history = model.fit(train_ds, validation_data=test_ds, epochs=10)
+history = model.fit(train_ds, validation_data=test_ds, epochs=20)
+
 
 plt.plot(history.history['accuracy'], label='Dokładność treningowa')
 plt.plot(history.history['val_accuracy'], label='Dokładność testowa')
@@ -172,6 +184,7 @@ plt.legend()
 plt.grid(True)
 plt.show()
 
+#model.save('CNNZnakiDrogowe.h5')
 
 for images, labels in test_ds.take(1):  
     predictions = model.predict(images)
@@ -185,7 +198,7 @@ for images, labels in test_ds.take(1):
         true_label = class_names[labels[i]]
         predicted_label = class_names[predicted_labels[i]]
 
-        # Nowe: opisy po ludzku
+       
         pred_text = f"{predicted_label} ({klasy_opis.get(predicted_label, 'Brak opisu')})"
         true_text = f"{true_label} ({klasy_opis.get(true_label, 'Brak opisu')})"
 
@@ -199,7 +212,7 @@ for images, labels in test_ds.take(1):
 
 
 
-image_path = "/dosprawdzenia/znakstop.jpeg"  
+image_path = "dosprawdzenia/og30.png"  
 
 
 img = Image.open(image_path).resize((32, 32))
@@ -217,7 +230,8 @@ confidence = tf.nn.softmax(predictions[0])[predicted_index].numpy() * 100
 
 print(f"🛑 Model przewiduje: {predicted_class} ({klasy_opis.get(predicted_class, 'Brak opisu')}) z pewnością {confidence:.2f}%")
 
-plt.imshow(np.squeeze(img_array) * 255.0.astype("uint8"))
+plt.imshow((np.squeeze(img_array) * 255).astype("uint8"))
+
 plt.title(f"{predicted_class} ({confidence:.2f}%)")
 plt.axis("off")
 plt.show()
